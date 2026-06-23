@@ -6,7 +6,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8") if
 
 setup(
     name='samcode-cli',
-    version='1.2.0',  # Bumped for refactor
+    version='1.2.1',  # Bumped for refactor
     description='An autonomous AI coding agent that runs in your terminal.',
     long_description=long_description,
     long_description_content_type="text/markdown",

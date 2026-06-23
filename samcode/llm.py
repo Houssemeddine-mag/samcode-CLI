@@ -26,7 +26,7 @@ class ProviderRegistry:
         "qwen": ProviderConfig("Qwen (Alibaba)","https://dashscope.aliyuncs.com/compatible-mode/v1", "https://dashscope.aliyuncs.com/compatible-mode/v1/models", "qwen-turbo", "bearer", True),
         "nvidia": ProviderConfig("NVIDIA NIM", "https://integrate.api.nvidia.com/v1", "https://integrate.api.nvidia.com/v1/models", "meta/llama-3.1-405b-instruct", "bearer", True),
         "aihubmix": ProviderConfig("AiHubMix", "https://aihubmix.com/v1", "https://aihubmix.com/v1/models", "gpt-4o", "bearer", True),
-        "freemodel": ProviderConfig("FreeModel", "https://cc.freemodel.dev", "https://cc.freemodel.dev/v1", "gpt-4o", "bearer", True),
+        "freemodel": ProviderConfig("FreeModel", "https://cc.freemodel.dev/v1", "https://cc.freemodel.dev/v1/models", "gpt-4o", "bearer", True),
         "opencodezen": ProviderConfig("OpenCode Zen", "https://opencode.ai/zen", "https://opencode.ai/zen/v1", "gpt-4o", "bearer", True),
         "atomicchat": ProviderConfig("Atomic Chat", "http://localhost:1337/v1", "http://localhost:1337/v1/models", "unsloth\\gemma-4-E4B-it-IQ4_XS", "none", True),
         "custom": ProviderConfig("Custom Provider", "", "", "custom-model", "bearer", True)
@@ -60,7 +60,7 @@ class AIModelClient:
     def list_models(self) -> List[ModelInfo]:
         models = []
         try:
-            if self.provider in ["openai", "openrouter", "deepseek", "mistral", "groq", "qwen"]:
+            if self.provider in ["openai", "openrouter", "deepseek", "mistral", "groq", "qwen", "nvidia", "aihubmix", "freemodel", "opencodezen", "atomicchat", "custom"]:
                 headers = {"Authorization": f"Bearer {self.api_key}"}
                 resp = self._request('GET', f"{self.base_url.rstrip('/')}/models", headers=headers, timeout=15)
                 if resp.ok:
@@ -86,7 +86,7 @@ class AIModelClient:
         return models
 
     def chat(self, messages: List[Dict], stream: bool = True, on_token: Callable[[str], None] = None) -> str:
-        if self.provider == "anthropic": return self._anthropic_chat(messages, stream, on_token)
+        if self.provider in ("anthropic", "freemodel"): return self._anthropic_chat(messages, stream, on_token)
         elif self.provider == "google": return self._google_chat(messages, stream, on_token)
         elif self.provider == "ollama": return self._ollama_chat(messages, stream, on_token)
         return self._openai_style_chat(messages, stream, on_token)
@@ -110,9 +110,9 @@ class AIModelClient:
         prompt = "Describe this image in detail: identify all objects, people, animals, text, colors, scene type, composition, and any notable details. Be thorough."
 
         try:
-            if self.provider in ("openai", "deepseek", "groq", "openrouter", "qwen", "nvidia", "aihubmix", "freemodel", "opencodezen", "atomicchat", "custom", "ollama"):
+            if self.provider in ("openai", "deepseek", "groq", "openrouter", "qwen", "nvidia", "aihubmix", "opencodezen", "atomicchat", "custom", "ollama"):
                 return self._vision_openai(b64_data, media_type, prompt)
-            if self.provider == "anthropic":
+            if self.provider in ("anthropic", "freemodel"):
                 return self._vision_anthropic(b64_data, media_type, prompt)
             if self.provider == "google":
                 return self._vision_google(b64_data, media_type, prompt)
@@ -139,7 +139,10 @@ class AIModelClient:
         return ""
 
     def _vision_anthropic(self, b64: str, media_type: str, prompt: str) -> str:
-        headers = {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"}
+        if self.provider == "freemodel":
+            headers = {"Authorization": f"Bearer {self.api_key}", "anthropic-version": "2023-06-01", "Content-Type": "application/json"}
+        else:
+            headers = {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"}
         payload = {
             "model": self.model, "max_tokens": 1024,
             "messages": [{"role": "user", "content": [
@@ -175,7 +178,10 @@ class AIModelClient:
     def _anthropic_chat(self, messages: List[Dict], stream: bool, on_token: Callable[[str], None] = None) -> str:
         system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
         anthropic_messages = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
-        headers = {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"}
+        if self.provider == "freemodel":
+            headers = {"Authorization": f"Bearer {self.api_key}", "anthropic-version": "2023-06-01", "Content-Type": "application/json"}
+        else:
+            headers = {"x-api-key": self.api_key, "anthropic-version": "2023-06-01", "Content-Type": "application/json"}
         payload = {"model": self.model, "messages": anthropic_messages, "max_tokens": 4096, "system": system_msg, "stream": stream}
         try:
             resp = self._request('POST', f"{self.base_url.rstrip('/')}/messages", headers=headers, json=payload, stream=stream, timeout=180)
