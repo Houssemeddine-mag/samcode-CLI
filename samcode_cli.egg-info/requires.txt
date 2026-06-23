@@ -1,0 +1,5 @@
+rich
+questionary
+prompt_toolkit
+requests
+beautifulsoup4

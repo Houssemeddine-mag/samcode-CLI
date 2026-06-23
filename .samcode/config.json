@@ -1,0 +1,10 @@
+{
+  "provider": "atomicchat",
+  "model": "unsloth\\gemma-4-E4B-it-IQ4_XS",
+  "api_key": "123",
+  "custom_base_url": "",
+  "caveman_mode": 0,
+  "frontend_mode": false,
+  "data_mode": false,
+  "teacher_mode": false
+}

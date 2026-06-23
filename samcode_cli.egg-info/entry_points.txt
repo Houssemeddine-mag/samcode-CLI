@@ -1,0 +1,2 @@
+[console_scripts]
+samcode = samcode.__main__:main
